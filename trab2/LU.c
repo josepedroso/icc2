@@ -522,7 +522,7 @@ void refLU(args *argumentos)
         // Soma matrizes para aproximar do valor verdadeiro
         soma_matriz(matriz_Inv_n, matriz_Inv, lu->n);
         matriz_Inv = copia_matriz(matriz_Inv_n, lu->n);
-        lee_matriz(matriz_Inv_n, lu->n, argumentos->OUT);
+        //lee_matriz(matriz_Inv_n, lu->n, argumentos->OUT);
 
         it = it + 1;
     } while (it < argumentos->K);

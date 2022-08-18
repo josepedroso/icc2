@@ -104,22 +104,19 @@ double *aloca_vetor(int n)
 double **aloca_matriz(int n)
 {
     double **m;
-    int i;
-    m = (double **)malloc(n * sizeof(double *));
+    int len = sizeof(double *) * n + sizeof(double) * n * n;
+    m = (double **)malloc(len);
     if (m == NULL)
     {
         perror("Memoria insuficiente");
         exit(1);
     }
-    for (i = 0; i < n; i++)
-    {
-        m[i] = (double *)malloc(sizeof(double) * n);
-        if (m[i] == NULL)
-        {
-            perror("Memoria insuficiente");
-            exit(1);
-        }
-    }
+
+    double *b = (double *)(m+n);
+
+    for(int i = 0; i < n; i++)
+        m[i] = (b + n * i);
+    
     return m;
 }
 
