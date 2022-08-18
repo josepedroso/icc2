@@ -268,19 +268,20 @@ void convert_V_to_M(double **m, double *v, int coluna, int tam) // converte um v
  * @param argumentos
  * @return double**
  */
-double **resolve_sisL(LU *lu, args *argumentos) // resolve Ly
+void resolve_sisL(LU *lu, args *argumentos) // resolve Ly
 {
-    SL *sis = aloca_sist(lu->n);
-    double *v = aloca_vetor(lu->n);
-    double **m = aloca_matriz(lu->n);
     for (int colunaI = 0; colunaI < lu->n; colunaI++) //// converte cada coluna da matriz LU->I em sisU->X;
     {
-        convert_M_to_V(lu->I, v, colunaI, lu->n); // coverte lu->I[i][coluna] em sisU->X
-        convert_LU_SL(lu, sis, lu->L, v);         // Converte em sistema lu->U em sisU->A
-        retrossubsinver(sis);
-        convert_V_to_M(m, sis->X, colunaI, lu->n);
+        //retrosubstituicao Inversa 
+        for (int i = 0 ; i < lu->n; i++)
+        {
+            for (int j = 0; j < i; j++)
+            {
+                lu->I[i][colunaI] -= lu->L[i][j] * lu->I[j][colunaI];
+            }
+            lu->I[i][colunaI] /= lu->L[i][i];
+        }
     }
-    return m;
 }
 /**
  * @brief
@@ -289,19 +290,21 @@ double **resolve_sisL(LU *lu, args *argumentos) // resolve Ly
  * @param argumentos
  * @return double**
  */
-double **resolve_sisU(LU *lu, args *argumentos) // converte o sistema LU em sisU-> e realiza a eliminacao de gauss para resolver o sistema linear
+void resolve_sisU(double **inversa, LU *lu, args *argumentos) // converte o sistema LU em sisU-> e realiza a eliminacao de gauss para resolver o sistema linear
 {
-    SL *sis = aloca_sist(lu->n);
-    double *v = aloca_vetor(lu->n);
-    double **m = aloca_matriz(lu->n);
     for (int colunaI = 0; colunaI < lu->n; colunaI++) // converte cada coluna da matriz Ly->I em sisU->X;
     {
-        convert_M_to_V(lu->I, v, colunaI, lu->n);
-        convert_LU_SL(lu, sis, lu->U, v);          // coverte lu->I[i][coluna ] em sisU->X
-        retrossubs(sis);                           // realiza a retrosubstituicao obtendo um conjunto de n vetores que unidos geram a matriz inversa
-        convert_V_to_M(m, sis->X, colunaI, lu->n); // une os vetores resultantes e gera a matriz inversa
+        //retrosubstituicao
+        for (int i = (lu->n) - 1; i >= 0; --i)
+        {
+            for (int j = i + 1; j < lu->n; j++)
+            {
+                lu->I[i][colunaI] -= lu->U[i][j] * lu->I[j][colunaI];
+            }
+            lu->I[i][colunaI] /= lu->U[i][i];
+            inversa[i][colunaI] = lu->I[i][colunaI];
+        }
     }
-    return m;
 }
 /**
  * @brief
@@ -310,12 +313,10 @@ double **resolve_sisU(LU *lu, args *argumentos) // converte o sistema LU em sisU
  * @param argumentos
  * @return double**
  */
-double **resolveLU(LU *lu, args *argumentos) // resolve o sistema Ly e U  dando origem a matriz identidade a partir da resolucao dos sistemas
+void resolveLU(double **inversa, LU *lu, args *argumentos) // resolve o sistema Ly e U  dando origem a matriz identidade a partir da resolucao dos sistemas
 {
-    lu->I = copia_matriz(resolve_sisL(lu, argumentos), lu->n); // calcula sis->X[I] que entra como sis->B[I] no sistema lu
-
-    double **matriz_Inv = resolve_sisU(lu, argumentos); // resolve sisU com sisU->B = sisL->I
-    return matriz_Inv;
+    resolve_sisL(lu, argumentos); // calcula sis->X[I] que entra como sis->B[I] no sistema lu
+    resolve_sisU(inversa, lu, argumentos);// resolve sisU com sisU->B = sisL->I
 }
 /**
  * @brief
@@ -473,26 +474,19 @@ void refLU(args *argumentos)
 
     matrizA = copia_matriz(lu->U, lu->n); // salva matriz de entrada
     
-    /*
-    if (achaDeterminante(matrizA, lu->n) < EPLISON1)// ve se eh invertivel
-    {
-        perror("A MATRIZ NAO EH INVERSIVEL");
-        exit(-1);
-    }
-    */
     tLU = timestamp();
     FatoracaoLU(lu, argumentos); // converte a matriz L e U EM DOIS SISTEMAS LINEARES
     tLU = timestamp() - tLU;
     sLU += tLU;
 
     tSL = timestamp();
-    matriz_Inv = resolveLU(lu, argumentos);
+    resolveLU(matriz_Inv, lu, argumentos);
     tSL = timestamp() - tSL;
     sSL += tSL;
 
     fprintf(argumentos->OUT, "#\n");
 
-    lee_matriz(matriz_Inv, lu->n, argumentos->OUT);
+    lee_matriz(matrizA, lu->n, argumentos->OUT);
 
     do
     {
@@ -502,20 +496,12 @@ void refLU(args *argumentos)
         sR += tR;
 
         norma = Norma_LU(mResiduo, lu->n, it, argumentos->OUT); // ||R|| = ∑R[i,j]2
-        if (norma < EPLISON1)
-        {
-            break;
-        }
 
         // Nova matriz inversa R = A ∗ W−1
         preenche_LU(lu, mResiduo, matrizA);
-        tLU = timestamp();
-        FatoracaoLU(lu, argumentos); // converte a matriz L e U EM DOIS SISTEMAS LINEARES
-        tLU = timestamp() - tLU;
-        sLU += tLU;
 
         tSL = timestamp();
-        matriz_Inv_n = resolveLU(lu, argumentos);
+        resolveLU(matriz_Inv_n, lu, argumentos);
         tSL = timestamp() - tSL;
         sSL += tSL;
 
@@ -525,7 +511,7 @@ void refLU(args *argumentos)
         //lee_matriz(matriz_Inv_n, lu->n, argumentos->OUT);
 
         it = it + 1;
-    } while (it < argumentos->K);
+    } while (it <= argumentos->K);
 
     print_tempo(argumentos->OUT, it, sLU, sSL, sR);
     lee_matriz(matriz_Inv, lu->n, argumentos->OUT);

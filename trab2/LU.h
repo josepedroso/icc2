@@ -137,7 +137,7 @@ void FatoracaoLU(LU *sis, args *argumentos);
  * @param argumentos 
  * @return double** 
  */
-double **resolve_sisL(LU *lu,args *argumentos);
+void resolve_sisL(LU *lu,args *argumentos);
 
 /**
  * @brief converte o sistema LU em sisU-> e realiza a eliminacao de gauss para resolver o sistema linear
@@ -146,7 +146,7 @@ double **resolve_sisL(LU *lu,args *argumentos);
  * @param argumentos 
  * @return double** 
  */
-double **resolve_sisU(LU *lu,args *argumentos);
+void resolve_sisU(double **inversa,LU *lu,args *argumentos);
 
 /**
  * @brief RESOLVE O SISTEMA LINEAR
@@ -155,7 +155,7 @@ double **resolve_sisU(LU *lu,args *argumentos);
  * @param argumentos 
  * @return double** 
  */
-double **resolveLU(LU *lu,args* argumentos);
+void resolveLU(double **inversa, LU *lu,args* argumentos);
 
 //* RESIDUO E ||R||*//
 
